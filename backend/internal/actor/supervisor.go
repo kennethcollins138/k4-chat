@@ -9,6 +9,31 @@ import (
 	"github.com/anthdm/hollywood/actor"
 )
 
+/*
+FILE NEEDS:
+ - TODO: Supervision logic: actor failure, restart, health check, etc.
+ - TODO: Logging  not just fmt.Println
+ - TODO: Configuration
+ - TODO: Unit Testing
+ - TODO: Health Checking
+ - TODO: Concurrency/Race checks
+ - TODO: Documentation
+
+Would be nice before sprint is over:
+  - Structured logging specifically error context
+  - Configuration Validation, yaml files with loader would be great
+  - Metrics (prometheus would be amazing)
+  - Circuit Breaker would be nice (need to wait until we have actual LLM and db connections)
+  - Backoff strategies would be great as well
+*/
+
+/*
+	Next Steps:
+		- Will write docs for this and general unit tests for this file
+		- moving to Managers strating specifically with UserManagerActor
+		- need to setup message bus as well
+*/
+
 // SupervisorConfig defines configuration for the supervisor
 type SupervisorConfig struct {
 	MaxRestarts     int           // Maximum restarts within the restart window
@@ -68,10 +93,24 @@ func NewSupervisorActor(config SupervisorConfig) actor.Producer {
 // Receive handles all messages sent to the supervisor
 func (s *SupervisorActor) Receive(ctx *actor.Context) {
 	switch msg := ctx.Message().(type) {
+	case *actor.Initialized:
+		// Handle actor initialization
+		log.Println("SupervisorActor: Initialized")
+
+	case actor.Initialized:
+		// Handle actor initialization (non-pointer version)
+		log.Println("SupervisorActor: Initialized (non-pointer)")
+
 	case *actor.Started:
 		s.handleStarted(ctx)
 
+	case actor.Started:
+		s.handleStarted(ctx)
+
 	case *actor.Stopped:
+		s.handleStopped(ctx)
+
+	case actor.Stopped:
 		s.handleStopped(ctx)
 
 	case *ShutdownRequest:
