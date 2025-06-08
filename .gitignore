@@ -30,3 +30,8 @@ go.work.sum
 # Editor/IDE
 .idea/
 .vscode/
+backend/.idea/
+backend/.vscode/
+
+# Scratch file
+scratch.txt
