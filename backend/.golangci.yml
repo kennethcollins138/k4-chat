@@ -1,0 +1,83 @@
+version: "2"
+
+run:
+  concurrency: 4              # Run up to 4 linters in parallel
+  tests: false                # Don’t run linters on *_test.go
+
+linters:
+  default: none               # Explicitly opt-in to linters
+  enable:
+    - errcheck                # Check for unchecked errors
+    - goconst                 # Detect magic strings/consts
+    - gocritic                # Style and correctness checks
+    - gocyclo                 # Cyclomatic complexity
+    - govet                   # Go's official vet tool
+    - ineffassign             # Unused assignments
+    - misspell                # Spelling
+    - staticcheck             # Huge set of checks (SA, ST, etc.)
+    - unused                  # Detect unused vars/types
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    gocyclo:
+      min-complexity: 20
+    misspell:
+      locale: US
+    staticcheck:
+      checks:
+        - all
+
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+
+    rules:
+      - linters:
+          - errcheck
+        text: Error return value is not checked
+
+    paths:                     # Exclude common generated or vendor code
+      - .*_generated\.go$
+      - .*_test\.go$
+      - .*\.pb\.go$
+      - .*_mock\.go$
+      - .*mock_.*\.go
+      - vendor
+      - third_party
+      - mocks
+      - test
+      - scripts
+      - third_party$
+      - builtin$
+      - examples$
+
+formatters:
+  enable:
+    - gofmt                   # Run gofmt as formatter
+
+  settings:
+    gofmt:
+      simplify: true          # Enable simplification
+
+  exclusions:
+    generated: lax
+    paths:                    # Same exclusions for formatting
+      - .*_generated\.go$
+      - .*_test\.go$
+      - .*\.pb\.go$
+      - .*_mock\.go$
+      - .*mock_.*\.go
+      - vendor
+      - third_party
+      - mocks
+      - test
+      - scripts
+      - third_party$
+      - builtin$
+      - examples$
