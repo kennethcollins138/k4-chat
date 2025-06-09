@@ -206,7 +206,7 @@ func (u *UserActor) handleConnectionClosed(ctx *actor.Context, msg *UserConnecti
 				// Send the shutdown consideration message after 5 minutes
 				ctx.Engine().Send(ctx.PID(), &ConsiderShutdown{})
 			case <-ctx.Context().Done():
-				// Context was cancelled, stop the timer
+				// Context was canceled, stop the timer
 				return
 			}
 		}()
@@ -408,7 +408,7 @@ func (u *UserActor) handleConsiderShutdown(ctx *actor.Context, msg *ConsiderShut
 		log.Printf("UserActor[%s]: Shutting down due to no active connections", u.userID)
 		ctx.Engine().Stop(ctx.PID())
 	} else {
-		log.Printf("UserActor[%s]: Shutdown consideration cancelled, %d connections active",
+		log.Printf("UserActor[%s]: Shutdown consideration canceled, %d connections active",
 			u.userID, len(u.connections))
 	}
 }

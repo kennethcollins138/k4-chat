@@ -12,7 +12,7 @@ Message represents a single entry in a chat session, whether from the user, assi
 This model is designed to support **branchable conversations**, **rich content**, and **auditing** of
 LLM behavior. While simple in structure, it accommodates advanced features like:
 
-- Message Trees (threaded/branching dialogues)
+- Message Trees (threaded/branching dialogs)
 - Response tracking (e.g. token usage, finish reasons)
 - File attachments per message
 - Model-specific metadata
