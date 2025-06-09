@@ -19,7 +19,7 @@ type DB struct {
 }
 
 // Config holds database configuration
-type Config struct {
+type PostgresConfig struct {
 	Host        string
 	Port        int
 	User        string
@@ -34,8 +34,8 @@ type Config struct {
 }
 
 // DefaultConfig returns sensible defaults for database configuration
-func DefaultConfig() Config {
-	return Config{
+func DefaultPostgresConfig() PostgresConfig {
+	return PostgresConfig{
 		Host:        "localhost",
 		Port:        5432,
 		User:        "postgres",
@@ -51,7 +51,7 @@ func DefaultConfig() Config {
 }
 
 // NewDB creates a new database connection pool
-func NewDB(config Config) (*DB, error) {
+func NewDB(config PostgresConfig) (*DB, error) {
 	dsn := fmt.Sprintf(
 		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
 		config.User, config.Password, config.Host, config.Port, config.Database, config.SSLMode,

@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/kdot/k4-chat/backend/internal/auth"
 )
 
 // WriteJSONResponse writes the given data as a JSON response with the specified HTTP status code.
@@ -112,4 +113,44 @@ func (srw *StatusResponseWriter) Push(target string, opts *http.PushOptions) err
 		return errors.New("underlying ResponseWriter does not implement http.Pusher")
 	}
 	return p.Push(target, opts)
+}
+
+// mapErrorToHTTPStatus maps domain errors to appropriate HTTP status codes
+func (h *AuthHandler) mapErrorToHTTPStatus(err error) int {
+	// Check if it's a structured auth error
+	if authErr := auth.GetAuthError(err); authErr != nil {
+		switch authErr.Type {
+		case "validation_error":
+			return http.StatusBadRequest
+		case "user_error":
+			if authErr.Code == "USER_EXISTS" {
+				return http.StatusConflict
+			}
+			return http.StatusBadRequest
+		case "auth_error":
+			return http.StatusUnauthorized
+		case "rate_limit":
+			return http.StatusTooManyRequests
+		case "not_implemented":
+			return http.StatusNotImplemented
+		default:
+			return http.StatusInternalServerError
+		}
+	}
+
+	// Fallback to checking standard errors
+	switch {
+	case errors.Is(err, auth.ErrUserAlreadyExists):
+		return http.StatusConflict
+	case errors.Is(err, auth.ErrInvalidEmail):
+		return http.StatusBadRequest
+	case errors.Is(err, auth.ErrWeakPassword):
+		return http.StatusBadRequest
+	case errors.Is(err, auth.ErrInvalidCredentials):
+		return http.StatusUnauthorized
+	case errors.Is(err, auth.ErrUserNotFound):
+		return http.StatusNotFound
+	default:
+		return http.StatusInternalServerError
+	}
 }
