@@ -7,6 +7,28 @@ import (
 	"github.com/kdot/k4-chat/backend/internal/database/models"
 )
 
+// UserManager configuration and metrics types
+// GOING TO MOVE TO RESPECTIVE CONFIG AND METRIC FILES
+type (
+	UserManagerConfig struct {
+		MaxActiveUsers      int           // Maximum number of active UserActors
+		IdleTimeout         time.Duration // Time before idle UserActor is considered for cleanup
+		ShutdownTimeout     time.Duration // Maximum time to wait for UserActor shutdown
+		HealthCheckInterval time.Duration // How often to check UserActor health
+		CleanupInterval     time.Duration // How often to run cleanup tasks
+	}
+
+	UserManagerMetrics struct {
+		TotalActiveUsers   int
+		TotalConnections   int
+		TotalSessions      int
+		UsersCreated       int64
+		UsersShutdown      int64
+		HealthChecksFailed int64
+		CleanupOperations  int64
+	}
+)
+
 // Message types for supervisor communication
 type (
 	ShutdownRequest struct {
@@ -343,4 +365,43 @@ type (
 	StartPingTicker struct{}
 
 	StopPingTicker struct{}
+)
+
+// UserManager specific messages
+type (
+	GetUserManagerStatusRequest struct{}
+
+	UserManagerStatusResponse struct {
+		Timestamp        time.Time
+		TotalActiveUsers int
+		TotalConnections int
+		TotalSessions    int
+		IsShuttingDown   bool
+		ActiveUsers      []UserActorStatus
+		Config           UserManagerConfig
+	}
+
+	UserActorStatus struct {
+		UserID            string
+		SpawnedAt         time.Time
+		LastActiveAt      time.Time
+		ConnectionCount   int
+		SessionCount      int
+		IsHealthy         bool
+		ShutdownRequested bool
+	}
+
+	GetUserManagerMetricsRequest struct{}
+
+	UserManagerMetricsResponse struct {
+		Timestamp time.Time
+		Metrics   UserManagerMetrics
+	}
+
+	CleanupIdleUsersRequest struct{}
+
+	// Internal ticker messages
+	HealthCheckTick struct{}
+
+	CleanupTick struct{}
 )

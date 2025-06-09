@@ -408,7 +408,9 @@ func TestChildActorInfo(t *testing.T) {
 	// Create a test child actor info
 	testPID := &actor.PID{}
 	testProducer := func() actor.Receiver {
-		return &UserManagerActor{users: make(map[string]*actor.PID)}
+		return &UserManagerActor{
+			users: make(map[string]*UserActorInfo),
+		}
 	}
 
 	info := &ChildActorInfo{

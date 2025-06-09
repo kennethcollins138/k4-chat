@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/anthdm/hollywood/actor"
+	"github.com/kdot/k4-chat/backend/internal/database"
 )
 
 /*
@@ -139,12 +140,12 @@ func (s *SupervisorActor) handleStarted(ctx *actor.Context) {
 
 // spawnChildActors creates all the main system actors
 func (s *SupervisorActor) spawnChildActors(ctx *actor.Context) {
+	// TODO: Initialize database connection here
+	// For now, we'll pass nil - this should be injected via dependency injection
+	var db *database.DB = nil
+
 	// Spawn UserManagerActor
-	s.userManager = s.spawnChild(ctx, "user-manager", func() actor.Receiver {
-		return &UserManagerActor{
-			users: make(map[string]*actor.PID),
-		}
-	})
+	s.userManager = s.spawnChild(ctx, "user-manager", NewUserManagerActor(db))
 
 	// Spawn LLMManagerActor
 	s.llmManager = s.spawnChild(ctx, "llm-manager", func() actor.Receiver {
