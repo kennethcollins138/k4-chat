@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------
 # General Purpose Go Project Makefile
 # -------------------------------------------------------------------
-.PHONY: all build run test lint lint-fix fmt clean deps help
+.PHONY: all build run test lint lint-fix fmt clean deps check-coverage help
 
 # Default variables (can be overridden via `make VAR=value`)
 APP_NAME ?= k4-chat-backend
@@ -47,6 +47,16 @@ clean:
 deps:
 	@echo "Tidying up dependencies..."
 	@go mod tidy
+
+check-coverage:
+	@PKG_NAME=$(pkg) && \
+	PKG_PATH=$$(find . -type d -name $$PKG_NAME | head -n 1) && \
+	if [ -z "$$PKG_PATH" ]; then echo "Package '$$PKG_NAME' not found."; exit 1; fi && \
+	COVERAGE_OUT=$${PKG_NAME}_coverage.out && \
+	echo "Running tests for $$PKG_PATH..." && \
+	go test $$PKG_PATH -coverprofile=$$COVERAGE_OUT -coverpkg=$$PKG_PATH && \
+	echo "Coverage summary for $$PKG_NAME:" && \
+	go tool cover -func=$$COVERAGE_OUT | grep "$$PKG_NAME" || echo "No matching lines found for $$PKG_NAME"
 
 help:
 	@echo "Common targets:"
