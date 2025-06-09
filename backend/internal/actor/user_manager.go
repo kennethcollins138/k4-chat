@@ -8,14 +8,14 @@ import (
 	"time"
 
 	"github.com/anthdm/hollywood/actor"
+	"github.com/kdot/k4-chat/backend/internal/auth"
 	"github.com/kdot/k4-chat/backend/internal/database"
 	"github.com/kdot/k4-chat/backend/internal/database/models"
-	"github.com/kdot/k4-chat/backend/internal/utils"
 )
 
 /*
 UserManagerActor manages the lifecycle of all UserActors in the system.
-
+FIX: probably should decouple user creation logic just need UserActor creation
 Key Responsibilities:
 - UserActor lifecycle management (spawn, monitor, shutdown)
 - Connection routing to appropriate UserActors
@@ -196,7 +196,7 @@ func (um *UserManagerActor) handleStopped(ctx *actor.Context) {
 // handleCreateUser creates a new user in the database with proper password hashing
 func (um *UserManagerActor) handleCreateUser(ctx *actor.Context, msg *CreateUserRequest) {
 	// Hash password before storing
-	hashedPassword, err := utils.HashPassword(msg.Password)
+	hashedPassword, err := auth.HashPassword(msg.Password)
 	if err != nil {
 		log.Printf("UserManagerActor: Failed to hash password: %v", err)
 		ctx.Respond(&CreateUserResponse{
