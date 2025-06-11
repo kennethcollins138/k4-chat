@@ -68,6 +68,7 @@ auth:
     cleanup_interval: "5m"
     secure_cookies: true  # simulate production
     same_site_policy: "Strict"
+    enable_rotation: true
     device_binding: true
     fingerprint_validation: true
   password_policy:  # simulate production

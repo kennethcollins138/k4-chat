@@ -91,6 +91,7 @@ auth:
     cleanup_interval: "5m"
     secure_cookies: false  # HTTP allowed in dev
     same_site_policy: "Lax"
+    enable_rotation: false
     device_binding: false  # Easier testing in dev
     fingerprint_validation: false  # Easier testing in dev
   password_policy:

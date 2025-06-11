@@ -93,6 +93,7 @@ auth:
     cleanup_interval: "5m"
     secure_cookies: true  # Required for HTTPS
     same_site_policy: "Strict"
+    enable_rotation: true
     device_binding: true
     fingerprint_validation: true
   password_policy:
