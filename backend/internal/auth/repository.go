@@ -2,11 +2,12 @@ package auth
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/google/uuid"
-	"github.com/kdot/k4-chat/backend/internal/database/models"
 	"go.uber.org/zap"
+
+	"github.com/kdot/k4-chat/backend/internal/database"
+	"github.com/kdot/k4-chat/backend/internal/database/models"
 )
 
 // Repository interface defines data access methods for authentication
@@ -36,12 +37,12 @@ type Repository interface {
 
 // repository implements the Repository interface
 type repository struct {
-	db     *sql.DB
+	db     *database.DB
 	logger *zap.Logger
 }
 
 // NewRepository creates a new repository instance
-func NewRepository(db *sql.DB, logger *zap.Logger) Repository {
+func NewRepository(db *database.DB, logger *zap.Logger) Repository {
 	return &repository{
 		db:     db,
 		logger: logger,

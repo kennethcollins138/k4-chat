@@ -4,8 +4,10 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kdot/k4-chat/backend/configs"
+	"github.com/kdot/k4-chat/backend/internal/auth"
 	"github.com/kdot/k4-chat/backend/internal/auth/sessions"
 	"github.com/kdot/k4-chat/backend/internal/auth/tokens"
+	"github.com/kdot/k4-chat/backend/pkg/api/handlers"
 	"github.com/kdot/k4-chat/backend/pkg/api/middleware"
 )
 
@@ -34,7 +36,9 @@ func (s *Server) RegisterRoutes(router chi.Router) {
 	// Initialize actor managers/supervisor
 
 	// Initialize auth service and handler
-
+	authRepo := auth.NewRepository(s.pg, s.logger)
+	authService := auth.NewService(authRepo, s.logger)
+	authHandler := handlers.NewAuthHandler(authService, s.logger)
 	// Initialize user service and handler
 
 	// Initialize chat service and handler
@@ -42,19 +46,18 @@ func (s *Server) RegisterRoutes(router chi.Router) {
 	router.Route("/auth", func(r chi.Router) {
 		// public routes
 		r.Group(func(r chi.Router) {
-			// Assign middleware like rate limting
-			// r.Post("/signup", authHandler.SignUp )
-			// r.Post("/signin"), authHandler.SignIn)
-			// r.Post("/refresh", authHandler.RefreshToken)
+			// TODO: probably will need some middleare at this level
+			r.Post("/signup", authHandler.SignUp)
+			r.Post("/signin", authHandler.SignIn)
+			r.Post("/refresh", authHandler.RefreshTokens)
 		})
 		// private auth routes
 		r.Group(func(r chi.Router) {
 			r.Use(authMiddleware.Authenticate)
-			// TODO: AUTH AUTHENTICATE middleware
-			// r.Post("/signout", authHandler.SignOut)
-			// r.Post("/signout-all", authHandler.SignOutAllDevices)
-			// r.Get("/sessions", authHandler.GetActiveSessions)
-			// r.Delete("/sessions/{sessionID}", authHandler.RevokeSpecificSession)
+			r.Post("/signout", authHandler.SignOut)
+			r.Post("/signout-all", authHandler.SignOutAllDevices)
+			r.Get("/sessions", authHandler.GetActiveSessions)
+			r.Delete("/sessions/{sessionID}", authHandler.RevokeSpecificSession)
 		})
 	})
 
