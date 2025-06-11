@@ -30,7 +30,7 @@ func (s *Server) RegisterRoutes(router chi.Router) {
 	sessionManager := sessions.NewRedisSessionStore(s.redis, s.logger, tokenConfig.RefreshTokenTTL)
 
 	// Initialize Auth middleware
-	authMiddleware := middleware.NewAuthMiddleware(sessionManager, nil, tokenStore, nil, s.redis, s.logger)
+	authMiddleware := middleware.NewAuthMiddleware(sessionManager, nil, tokenStore, s.pg, s.redis, s.logger)
 	// Initialize actor managers/supervisor
 
 	// Initialize auth service and handler
@@ -49,6 +49,7 @@ func (s *Server) RegisterRoutes(router chi.Router) {
 		})
 		// private auth routes
 		r.Group(func(r chi.Router) {
+			r.Use(authMiddleware.Authenticate)
 			// TODO: AUTH AUTHENTICATE middleware
 			// r.Post("/signout", authHandler.SignOut)
 			// r.Post("/signout-all", authHandler.SignOutAllDevices)

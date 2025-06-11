@@ -143,6 +143,33 @@ func (db *DB) GetUserByID(ctx context.Context, userID uuid.UUID) (*models.User, 
 	return user, nil
 }
 
+// GetUserTier retrieves a user's tier by ID
+func (db *DB) GetUserTier(ctx context.Context, userID uuid.UUID) (string, error) {
+	query := `
+		SELECT tier FROM users WHERE id = $1 AND is_active = true`
+
+	var tier string
+	err := db.pool.QueryRow(ctx, query, userID).Scan(&tier)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return "free", ErrUserNotFound
+		}
+		return "free", fmt.Errorf("failed to get user tier: %w", err)
+	}
+
+	return tier, nil
+}
+
+// GetUserTierByStringID retrieves a user's tier by string ID (for auth middleware)
+func (db *DB) GetUserTierByStringID(ctx context.Context, userID string) (string, error) {
+	parsedID, err := uuid.Parse(userID)
+	if err != nil {
+		return "free", fmt.Errorf("invalid user ID format: %w", err)
+	}
+
+	return db.GetUserTier(ctx, parsedID)
+}
+
 // GetUserByEmail retrieves a user by email
 func (db *DB) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	user := &models.User{}

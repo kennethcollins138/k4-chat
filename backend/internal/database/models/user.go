@@ -43,6 +43,7 @@ type User struct {
 	Username     string    `json:"username" db:"username"`                   // Public-facing unique handle
 	PasswordHash string    `json:"-" db:"password_hash"`                     // Never exposed in JSON responses
 	DisplayName  *string   `json:"display_name,omitempty" db:"display_name"` // Optional display name
+	UserTier     string    `json:"tier" db:"tier"`                           // User tier
 	AvatarURL    *string   `json:"avatar_url,omitempty" db:"avatar_url"`     // Optional profile picture
 	CreatedAt    time.Time `json:"created_at" db:"created_at"`               // Account creation timestamp
 	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`               // Updated on profile change

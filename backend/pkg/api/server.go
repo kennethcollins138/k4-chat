@@ -95,7 +95,7 @@ func (s *Server) Routes() http.Handler {
 			&config.Middleware, s.logger,
 		),
 	)
-
+	//TODO: add versioning to server config
 	router.Route("api/v1", func(r chi.Router) {
 		// add some type of activity tracking middleware here for prometheus
 		// initialize metrics endpoint
