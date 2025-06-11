@@ -1,19 +1,36 @@
 package api
 
 import (
-	"github.com/docker/docker/api/server/router"
 	"github.com/go-chi/chi/v5"
+
+	"github.com/kdot/k4-chat/backend/configs"
+	"github.com/kdot/k4-chat/backend/internal/auth/sessions"
+	"github.com/kdot/k4-chat/backend/internal/auth/tokens"
+	"github.com/kdot/k4-chat/backend/pkg/api/middleware"
 )
 
-func (s *Server) RegisterRoutes(r chi.Router) {
+func (s *Server) RegisterRoutes(router chi.Router) {
 	// long todo list unfortunately.
 
 	// Initialize configs
+	cfg := configs.GetConfig()
+	tokenConfig := &tokens.TokenConfig{
+		AccessTokenTTL:     cfg.Auth.JWT.AccessTokenTTL,
+		RefreshTokenTTL:    cfg.Auth.JWT.RefreshTokenTTL,
+		JWTSecret:          cfg.Envs.Auth.AccessTokenSecret,
+		EnableTokenBinding: cfg.Auth.Sessions.DeviceBinding,
+		EnableRotation:     cfg.Auth.Sessions.EnableRotation,
+	}
 
 	// Initialize token/sessage management
+	tokenStore := tokens.NewRedisTokenStore(
+		s.redis, s.logger, tokenConfig,
+	)
+
+	sessionManager := sessions.NewRedisSessionStore(s.redis, s.logger, tokenConfig.RefreshTokenTTL)
 
 	// Initialize Auth middleware
-
+	authMiddleware := middleware.NewAuthMiddleware(sessionManager, nil, tokenStore, nil, s.redis, s.logger)
 	// Initialize actor managers/supervisor
 
 	// Initialize auth service and handler

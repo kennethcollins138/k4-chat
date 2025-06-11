@@ -34,17 +34,18 @@ type Config struct {
 
 // ServerConfig defines HTTP server configuration
 type ServerConfig struct {
-	Host            string        `yaml:"host"`
-	Port            int           `yaml:"port"`
-	ReadTimeout     time.Duration `yaml:"read_timeout"`
-	WriteTimeout    time.Duration `yaml:"write_timeout"`
-	IdleTimeout     time.Duration `yaml:"idle_timeout"`
-	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
-	MaxHeaderBytes  int           `yaml:"max_header_bytes"`
-	EnableProfiling bool          `yaml:"enable_profiling"`
-	TrustedProxies  []string      `yaml:"trusted_proxies"`
-	HealthCheckPath string        `yaml:"health_check_path"`
-	MetricsPath     string        `yaml:"metrics_path"`
+	Host              string        `yaml:"host"`
+	Port              int           `yaml:"port"`
+	ReadTimeout       time.Duration `yaml:"read_timeout"`
+	WriteTimeout      time.Duration `yaml:"write_timeout"`
+	ReadHeaderTimeout time.Duration `yaml:"read_header_timeout"`
+	IdleTimeout       time.Duration `yaml:"idle_timeout"`
+	ShutdownTimeout   time.Duration `yaml:"shutdown_timeout"`
+	MaxHeaderBytes    int           `yaml:"max_header_bytes"`
+	EnableProfiling   bool          `yaml:"enable_profiling"`
+	TrustedProxies    []string      `yaml:"trusted_proxies"`
+	HealthCheckPath   string        `yaml:"health_check_path"`
+	MetricsPath       string        `yaml:"metrics_path"`
 }
 
 // DatabaseConfig aggregates all database configurations
@@ -127,6 +128,7 @@ type SessionConfig struct {
 	SecureCookies         bool          `yaml:"secure_cookies"`
 	SameSitePolicy        string        `yaml:"same_site_policy"`
 	DeviceBinding         bool          `yaml:"device_binding"`
+	EnableRotation        bool          `yaml:"enable_rotation"`
 	FingerprintValidation bool          `yaml:"fingerprint_validation"`
 }
 
