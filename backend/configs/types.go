@@ -11,12 +11,11 @@ This file defines all configuration structures used throughout the application.
 It's organized by domain and provides type safety for all configuration values.
 */
 
-// Config is the root configuration structure that aggregates all subsystem configs
+// Config represents the complete application configuration
 type Config struct {
 	// Core application configs
 	Server   ServerConfig   `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
-	Redis    RedisConfig    `yaml:"redis"`
 	Auth     AuthConfig     `yaml:"auth"`
 	Logger   LoggerConfig   `yaml:"logger"`
 

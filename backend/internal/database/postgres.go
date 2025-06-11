@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/kdot/k4-chat/backend/configs"
 	"github.com/kdot/k4-chat/backend/internal/database/models"
 )
 
@@ -18,43 +19,26 @@ type DB struct {
 	pool *pgxpool.Pool
 }
 
-// Config holds database configuration
-type PostgresConfig struct {
-	Host        string
-	Port        int
-	User        string
-	Password    string
-	Database    string
-	SSLMode     string
-	MaxConns    int32
-	MinConns    int32
-	MaxConnTime time.Duration
-	MaxIdleTime time.Duration
-	HealthCheck time.Duration
-}
+// NewDB creates a new database connection pool from the main config
+func NewDB(cfg configs.PostgresConfig, envs configs.PostgresEnvsConfig) (*DB, error) {
+	host := cfg.Host
+	user := cfg.Username
+	database := cfg.Database
+	password := envs.Password
 
-// DefaultConfig returns sensible defaults for database configuration
-func DefaultPostgresConfig() PostgresConfig {
-	return PostgresConfig{
-		Host:        "localhost",
-		Port:        5432,
-		User:        "postgres",
-		Password:    "postgres",
-		Database:    "k4chat",
-		SSLMode:     "disable",
-		MaxConns:    25,
-		MinConns:    5,
-		MaxConnTime: time.Hour,
-		MaxIdleTime: time.Minute * 30,
-		HealthCheck: time.Minute,
+	if envs.Host != "" {
+		host = envs.Host
 	}
-}
+	if envs.User != "" {
+		user = envs.User
+	}
+	if envs.DB != "" {
+		database = envs.DB
+	}
 
-// NewDB creates a new database connection pool
-func NewDB(config PostgresConfig) (*DB, error) {
 	dsn := fmt.Sprintf(
 		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		config.User, config.Password, config.Host, config.Port, config.Database, config.SSLMode,
+		user, password, host, cfg.Port, database, cfg.SSLMode,
 	)
 
 	poolConfig, err := pgxpool.ParseConfig(dsn)
@@ -62,12 +46,12 @@ func NewDB(config PostgresConfig) (*DB, error) {
 		return nil, fmt.Errorf("failed to parse database config: %w", err)
 	}
 
-	// Configure connection pool
-	poolConfig.MaxConns = config.MaxConns
-	poolConfig.MinConns = config.MinConns
-	poolConfig.MaxConnLifetime = config.MaxConnTime
-	poolConfig.MaxConnIdleTime = config.MaxIdleTime
-	poolConfig.HealthCheckPeriod = config.HealthCheck
+	// Configure connection pool using main config values
+	poolConfig.MaxConns = int32(cfg.MaxOpenConns)
+	poolConfig.MinConns = int32(cfg.MaxIdleConns)
+	poolConfig.MaxConnLifetime = cfg.ConnMaxLifetime
+	poolConfig.MaxConnIdleTime = cfg.ConnMaxIdleTime
+	poolConfig.HealthCheckPeriod = cfg.HealthCheckPeriod
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
 	if err != nil {
@@ -83,7 +67,7 @@ func NewDB(config PostgresConfig) (*DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	log.Printf("Database connection established: %s:%d/%s", config.Host, config.Port, config.Database)
+	log.Printf("Database connection established: %s:%d/%s", host, cfg.Port, database)
 
 	return &DB{pool: pool}, nil
 }
@@ -107,7 +91,7 @@ func (db *DB) Stats() *pgxpool.Stat {
 }
 
 // ===== USER OPERATIONS =====
-
+// TODO: REMINDER TO REMOVE THESE, filler for repository methods actors should not handle user creation
 // CreateUser creates a new user
 func (db *DB) CreateUser(ctx context.Context, req models.CreateUserRequest) (*models.User, error) {
 	user := &models.User{

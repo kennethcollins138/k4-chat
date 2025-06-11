@@ -7,57 +7,19 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
+
+	"github.com/kdot/k4-chat/backend/configs"
 )
 
-// Config holds Redis configuration
-type RedisConfig struct {
-	URI            string
-	PoolSize       int
-	MinIdleConns   int
-	MaxRetries     int
-	DialTimeout    time.Duration
-	ReadTimeout    time.Duration
-	WriteTimeout   time.Duration
-	PoolTimeout    time.Duration
-	IdleTimeout    time.Duration
-	MaxConnAge     time.Duration
-	CircuitBreaker CircuitBreakerConfig
-}
-
-// CircuitBreakerConfig holds circuit breaker configuration
-type CircuitBreakerConfig struct {
-	Enabled          bool
-	FailureThreshold int
-	ResetTimeout     time.Duration
-}
-
-// DefaultConfig returns default Redis configuration
-func DefaultRedisConfig() *RedisConfig {
-	return &RedisConfig{
-		PoolSize:     10,
-		MinIdleConns: 5,
-		MaxRetries:   3,
-		DialTimeout:  5 * time.Second,
-		ReadTimeout:  3 * time.Second,
-		WriteTimeout: 3 * time.Second,
-		PoolTimeout:  4 * time.Second,
-		IdleTimeout:  5 * time.Minute,
-		MaxConnAge:   30 * time.Minute,
-		CircuitBreaker: CircuitBreakerConfig{
-			Enabled:          true,
-			FailureThreshold: 5,
-			ResetTimeout:     30 * time.Second,
-		},
-	}
-}
-
-// NewClient creates a new Redis client with optimized configuration
-func NewClient(cfg *RedisConfig, logger *zap.Logger) (*redis.Client, error) {
-	if cfg == nil {
-		cfg = DefaultRedisConfig()
+// NewClient creates a new Redis client from the unified RedisConfig
+func NewClient(cfg configs.RedisConfig, logger *zap.Logger) (*redis.Client, error) {
+	if !cfg.Enabled {
+		return nil, fmt.Errorf("redis is disabled in configuration")
 	}
 
-	opt, err := redis.ParseURL(cfg.URI)
+	uri := fmt.Sprintf("redis://%s:%s@%s:%d/%d", cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.Database)
+
+	opt, err := redis.ParseURL(uri)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse Redis URI: %w", err)
 	}
@@ -77,6 +39,29 @@ func NewClient(cfg *RedisConfig, logger *zap.Logger) (*redis.Client, error) {
 
 	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.DialTimeout)
+	defer cancel()
+
+	if err := client.Ping(ctx).Err(); err != nil {
+		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
+	}
+
+	// Add connection pool metrics logging
+	go monitorPoolStats(client, logger)
+
+	return client, nil
+}
+
+// NewClientFromURI creates a Redis client with a simple URI
+func NewClientFromURI(uri string, logger *zap.Logger) (*redis.Client, error) {
+	opt, err := redis.ParseURL(uri)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse Redis URI: %w", err)
+	}
+
+	client := redis.NewClient(opt)
+
+	// Test connection
+	ctx, cancel := context.WithTimeout(context.Background(), opt.DialTimeout)
 	defer cancel()
 
 	if err := client.Ping(ctx).Err(); err != nil {
