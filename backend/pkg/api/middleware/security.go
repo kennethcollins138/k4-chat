@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/cors"
@@ -12,235 +13,181 @@ import (
 /*
 SecurityMiddleware provides comprehensive HTTP security controls for the k4-chat API.
 
-Key Responsibilities:
-- Content Security Policy (CSP) enforcement with environment-specific policies
-- Cross-Origin Resource Sharing (CORS) configuration and enforcement
-- Security header injection (HSTS, XFO, XCTO, etc.)
-- API response caching controls for sensitive data
-- Session invalidation headers for logout endpoints
-- Production vs development security posture management
+This middleware applies security headers, CORS policies, and environment-specific
+configurations based on the application's YAML configuration.
+
+Key Features:
+- YAML-driven configuration from configs.MiddlewareConfig
+- Environment-aware security policies (strict prod, permissive dev)
+- CORS with credential safety and origin validation
+- Comprehensive security header application
+- API response caching controls
+- Session invalidation on logout
 
 Security Headers Applied:
-- HSTS: Forces HTTPS in production environments
-- CSP: Prevents XSS with strict policies in production, relaxed in development
-- X-Frame-Options: Prevents clickjacking attacks
-- X-Content-Type-Options: Prevents MIME type sniffing
-- X-XSS-Protection: Legacy XSS protection (for older browsers)
-- Referrer-Policy: Controls referrer information leakage
-- Permissions-Policy: Restricts access to browser APIs
-- Cross-Origin policies: COEP, COOP, CORP for isolation
-- Expect-CT: Certificate Transparency enforcement in production
-- Clear-Site-Data: Clears browser data on logout
-
-CORS Behavior:
-- Development: Allows additional localhost origins, maintains credentials
-- Production: Strict origin allowlist from configuration
-- Credential Safety: Automatically disables credentials if wildcard origins present
-
-Design Notes:
-- Environment-aware security policies (strict prod, permissive dev)
-- Spec-compliant CORS implementation preventing credential leakage
-- Graceful header chaining with proper middleware composition
-- Performance-conscious header application (no unnecessary recalculation)
-- Clear separation between CORS logic and general security headers
-
-Integration Points:
-Router -> SecurityMiddleware -> Application Handlers
-Configuration from: configs.Envs.Server.Environment, configs.Envs.Server.FrontendURL
+- HSTS, CSP, X-Frame-Options, X-Content-Type-Options
+- X-XSS-Protection, Referrer-Policy, Permissions-Policy
+- Cross-Origin policies (COEP, COOP, CORP)
+- Clear-Site-Data for logout endpoints
 */
 
-// SecurityConfig holds configuration for security middleware
-type SecurityConfig struct {
-	AllowedOrigins   []string
-	AllowedMethods   []string
-	AllowedHeaders   []string
-	ExposedHeaders   []string
-	AllowCredentials bool
-	MaxAge           int
-	Logger           *zap.Logger
-}
+// SecurityMiddleware creates a security middleware that applies both security headers
+// and CORS policies based on the provided middleware configuration.
+func SecurityMiddleware(cfg *configs.MiddlewareConfig, logger *zap.Logger) func(next http.Handler) http.Handler {
+	// Create CORS middleware from config
+	corsMiddleware := createCORSMiddleware(cfg, logger)
 
-// DefaultSecurityConfig returns a secure default configuration suitable for most applications.
-// It includes the configured frontend URL and localhost for development convenience.
-// All modern security headers are enabled with safe defaults.
-func DefaultSecurityConfig(logger *zap.Logger) *SecurityConfig {
-	return &SecurityConfig{
-		AllowedOrigins:   []string{configs.Envs.Server.FrontendURL, "http://localhost"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: true,
-		MaxAge:           300, // 5 minutes - balance between performance and security
-		Logger:           logger,
+	return func(next http.Handler) http.Handler {
+		// Chain CORS -> Security Headers -> Next Handler
+		return corsMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			applySecurityHeaders(w, r, cfg)
+			next.ServeHTTP(w, r)
+		}))
 	}
 }
 
-// SecurityHeaders applies a comprehensive set of security headers to all HTTP responses.
-// Headers are environment-aware: production uses strict policies while development
-// allows necessary flexibility for debugging and hot-reloading.
-//
-// Applied Headers:
-// - HSTS: Production only, prevents protocol downgrade attacks
-// - CSP: Strict in production (no eval/inline), permissive in development
-// - Anti-clickjacking, MIME sniffing prevention, XSS protection
-// - Cross-origin isolation policies for enhanced security
-// - Cache control for sensitive API responses
-// - Site data clearing for logout endpoints
-func SecurityHeaders(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// HSTS - Force HTTPS (only in production)
-		// Development typically uses HTTP, so HSTS would break local testing
-		if configs.Envs.Server.Environment == "production" {
-			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+// createCORSMiddleware builds CORS middleware from the YAML configuration
+func createCORSMiddleware(cfg *configs.MiddlewareConfig, logger *zap.Logger) func(http.Handler) http.Handler {
+	if !cfg.CORS.Enabled {
+		// Return no-op if CORS is disabled
+		return func(next http.Handler) http.Handler {
+			return next
 		}
+	}
 
-		// Content Security Policy – environment-specific policies
-		// Production: No unsafe-eval or unsafe-inline for maximum XSS protection
-		// Development: Allows inline scripts/styles and eval for hot-reloading and debugging
-		var cspPolicy string
-		if configs.Envs.Server.Environment == "production" {
-			cspPolicy = "default-src 'self'; " +
-				"script-src 'self'; " + // No inline scripts in production
-				"style-src 'self' 'unsafe-inline'; " + // Allow inline styles for CSS frameworks
-				"img-src 'self' data: https:; " + // Images from self, data URLs, HTTPS
-				"font-src 'self' data:; " + // Fonts from self and data URLs
-				"connect-src 'self'; " + // XHR/fetch to same origin only
-				"frame-ancestors 'none'; " + // Prevent framing (defense in depth with X-Frame-Options)
-				"base-uri 'self'; " + // Restrict base tag to prevent injection
-				"form-action 'self'" // Forms can only submit to same origin
-		} else { // development/test environments
-			cspPolicy = "default-src 'self'; " +
-				"script-src 'self' 'unsafe-inline' 'unsafe-eval'; " + // Allow inline scripts and eval for dev tools
-				"style-src 'self' 'unsafe-inline'; " +
-				"img-src 'self' data: https:; " +
-				"font-src 'self' data:; " +
-				"connect-src 'self' ws:; " + // Allow WebSocket connections for hot-reloading
-				"frame-ancestors 'none'; " +
-				"base-uri 'self'; " +
-				"form-action 'self'"
-		}
-		w.Header().Set("Content-Security-Policy", cspPolicy)
+	// Start with configured origins
+	allowedOrigins := cfg.CORS.AllowedOrigins
 
-		// Prevent MIME type sniffing attacks
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-
-		// Prevent clickjacking by disallowing framing
-		w.Header().Set("X-Frame-Options", "DENY")
-
-		// Legacy XSS protection for older browsers (modern browsers rely on CSP)
-		w.Header().Set("X-XSS-Protection", "1; mode=block")
-
-		// Control referrer information to prevent information leakage
-		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
-
-		// Restrict access to powerful browser APIs
-		w.Header().Set("Permissions-Policy",
-			"geolocation=(), "+
-				"microphone=(), "+
-				"camera=(), "+
-				"payment=(), "+
-				"usb=(), "+
-				"magnetometer=(), "+
-				"gyroscope=(), "+
-				"speaker=(), "+
-				"ambient-light-sensor=(), "+
-				"accelerometer=(), "+
-				"battery=()")
-
-		// Cross-origin isolation policies for enhanced security
-		w.Header().Set("Cross-Origin-Embedder-Policy", "require-corp")
-		w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
-		w.Header().Set("Cross-Origin-Resource-Policy", "same-origin")
-
-		// Hide server information to reduce attack surface
-		w.Header().Set("Server", "")
-
-		// Certificate Transparency enforcement in production
-		if configs.Envs.Server.Environment == "production" {
-			w.Header().Set("Expect-CT", "max-age=86400, enforce")
-		}
-
-		// Clear browser data on logout endpoints for security
-		if strings.HasSuffix(r.URL.Path, "/auth/signout") || strings.HasSuffix(r.URL.Path, "/auth/signout-all") {
-			w.Header().Set("Clear-Site-Data", "\"cache\", \"cookies\", \"storage\"")
-		}
-
-		// Prevent caching of sensitive API responses
-		if r.Header.Get("Accept") == "application/json" ||
-			r.Header.Get("Content-Type") == "application/json" {
-			w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, private")
-			w.Header().Set("Pragma", "no-cache")
-			w.Header().Set("Expires", "0")
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-// CORSMiddleware creates a CORS middleware with environment-aware origin handling.
-// It automatically prevents credential leakage by disabling credentials when wildcard
-// origins are present, maintaining CORS specification compliance.
-//
-// Development Behavior:
-// - Adds localhost variants to allowed origins for local development
-// - Enables debug mode for detailed CORS logging
-//
-// Production Behavior:
-// - Uses strict origin allowlist from configuration
-// - No debug logging for performance
-//
-// Security Features:
-// - Automatic credential safety: disables credentials if "*" origin present
-// - Configurable timeouts and headers
-// - Comprehensive method and header allowlists
-func CORSMiddleware(config *SecurityConfig) func(next http.Handler) http.Handler {
-	// In development, add localhost variants for convenience
-	allowedOrigins := config.AllowedOrigins
+	// Add development origins if needed
 	if configs.Envs.Server.Environment == "development" {
-		allowedOrigins = append(allowedOrigins, "http://localhost:3000", "http://127.0.0.1:5173")
+		devOrigins := []string{
+			"http://localhost:3000",
+			"http://localhost:5173",
+			"http://127.0.0.1:3000",
+			"http://127.0.0.1:5173",
+		}
+		allowedOrigins = append(allowedOrigins, devOrigins...)
+
+		// Add frontend URL if configured
+		if configs.Envs.Server.FrontendURL != "" {
+			allowedOrigins = append(allowedOrigins, configs.Envs.Server.FrontendURL)
+		}
 	}
 
-	// CORS specification compliance: wildcard origins cannot be used with credentials
-	// This prevents accidental credential leakage in misconfigured environments
-	allowCreds := config.AllowCredentials
-	for _, o := range allowedOrigins {
-		if o == "*" {
-			allowCreds = false
+	// Safety check: disable credentials if wildcard origin present
+	allowCredentials := cfg.CORS.AllowCredentials
+	for _, origin := range allowedOrigins {
+		if origin == "*" {
+			allowCredentials = false
+			if logger != nil {
+				logger.Warn("Disabled CORS credentials due to wildcard origin for security")
+			}
 			break
 		}
 	}
 
-	cors := cors.New(cors.Options{
+	corsConfig := cors.Options{
 		AllowedOrigins:   allowedOrigins,
-		AllowedMethods:   config.AllowedMethods,
-		AllowedHeaders:   config.AllowedHeaders,
-		ExposedHeaders:   config.ExposedHeaders,
-		AllowCredentials: allowCreds,
-		MaxAge:           config.MaxAge,
-		Debug:            configs.Envs.Server.Environment == "development" || configs.Envs.Server.Environment == "test",
-	})
+		AllowedMethods:   cfg.CORS.AllowedMethods,
+		AllowedHeaders:   cfg.CORS.AllowedHeaders,
+		ExposedHeaders:   cfg.CORS.ExposedHeaders,
+		AllowCredentials: allowCredentials,
+		MaxAge:           cfg.CORS.MaxAge,
+		Debug:            configs.Envs.Server.Environment == "development",
+	}
 
-	return cors.Handler
+	return cors.Handler(corsConfig)
 }
 
-// SecurityMiddleware combines CORS and security headers into a single middleware chain.
-// The order is important: CORS handler wraps security headers to ensure proper
-// preflight request handling while maintaining security header application.
-//
-// Middleware Order:
-// Request -> CORS Handler -> Security Headers -> Application Handler
-// Response <- CORS Handler <- Security Headers <- Application Handler
-//
-// This ensures:
-// - CORS preflight requests are handled before security headers
-// - Security headers are applied to all responses including CORS responses
-// - Proper error handling and response modification throughout the chain
-func SecurityMiddleware(config *SecurityConfig) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		// Chain the middleware: CORS wraps SecurityHeaders which wraps the next handler
-		corsHandler := CORSMiddleware(config)
-		securityHeadersHandler := SecurityHeaders(next)
+// applySecurityHeaders applies security headers based on configuration and environment
+func applySecurityHeaders(w http.ResponseWriter, r *http.Request, cfg *configs.MiddlewareConfig) {
+	security := &cfg.Security
+	isProduction := configs.Envs.Server.Environment == "production"
 
-		return corsHandler(securityHeadersHandler)
+	// HSTS - Only in production and if enabled
+	if isProduction && security.EnableHSTS {
+		hstsValue := "max-age=31536000; includeSubDomains; preload"
+		if security.HSTSMaxAge > 0 {
+			hstsValue = strings.Replace(hstsValue, "31536000",
+				strconv.Itoa(security.HSTSMaxAge), 1)
+		}
+		w.Header().Set("Strict-Transport-Security", hstsValue)
+	}
+
+	// Content Security Policy
+	cspPolicy := security.CSPPolicy
+	if cspPolicy == "" {
+		// Generate default CSP based on environment
+		if isProduction {
+			cspPolicy = "default-src 'self'; " +
+				"script-src 'self'; " +
+				"style-src 'self' 'unsafe-inline'; " +
+				"img-src 'self' data: https:; " +
+				"font-src 'self' data:; " +
+				"connect-src 'self'; " +
+				"frame-ancestors 'none'; " +
+				"base-uri 'self'; " +
+				"form-action 'self'"
+		} else {
+			cspPolicy = "default-src 'self'; " +
+				"script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+				"style-src 'self' 'unsafe-inline'; " +
+				"img-src 'self' data: https:; " +
+				"font-src 'self' data:; " +
+				"connect-src 'self' ws:; " +
+				"frame-ancestors 'none'; " +
+				"base-uri 'self'; " +
+				"form-action 'self'"
+		}
+	}
+	w.Header().Set("Content-Security-Policy", cspPolicy)
+
+	// X-Content-Type-Options
+	if security.EnableContentTypeNoSniff {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+	}
+
+	// X-Frame-Options
+	if security.EnableFrameOptions {
+		frameValue := security.FrameOptionsValue
+		if frameValue == "" {
+			frameValue = "DENY"
+		}
+		w.Header().Set("X-Frame-Options", frameValue)
+	}
+
+	// Standard security headers
+	w.Header().Set("X-XSS-Protection", "1; mode=block")
+	w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+	w.Header().Set("Permissions-Policy",
+		"geolocation=(), microphone=(), camera=(), payment=(), usb=(), "+
+			"magnetometer=(), gyroscope=(), speaker=(), ambient-light-sensor=(), "+
+			"accelerometer=(), battery=()")
+
+	// Cross-origin isolation policies
+	w.Header().Set("Cross-Origin-Embedder-Policy", "require-corp")
+	w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
+	w.Header().Set("Cross-Origin-Resource-Policy", "same-origin")
+
+	// Hide server information
+	w.Header().Set("Server", "")
+
+	// Certificate Transparency in production
+	if isProduction {
+		w.Header().Set("Expect-CT", "max-age=86400, enforce")
+	}
+
+	// Clear site data on logout
+	if strings.HasSuffix(r.URL.Path, "/auth/signout") ||
+		strings.HasSuffix(r.URL.Path, "/auth/signout-all") {
+		w.Header().Set("Clear-Site-Data", "\"cache\", \"cookies\", \"storage\"")
+	}
+
+	// Prevent caching of API responses
+	if r.Header.Get("Accept") == "application/json" ||
+		r.Header.Get("Content-Type") == "application/json" {
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, private")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
 	}
 }

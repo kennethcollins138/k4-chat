@@ -6,6 +6,7 @@ server:
   port: 0  # Random port for parallel testing
   read_timeout: "5s"  # Faster timeouts for tests
   write_timeout: "5s"
+  read_header_timeout: "5s"
   idle_timeout: "10s"
   shutdown_timeout: "5s"
   max_header_bytes: 1048576

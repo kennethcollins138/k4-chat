@@ -3,15 +3,15 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
 	"github.com/kdot/k4-chat/backend/configs"
 	"github.com/kdot/k4-chat/backend/internal/database"
+	"github.com/kdot/k4-chat/backend/pkg/api/middleware"
 )
 
 /*
@@ -58,12 +58,11 @@ This method will block until the server server is stopped or encounters a fatal 
 */
 func (s *Server) Run() error {
 	s.srv = &http.Server{
-		Addr:              strconv.Itoa(s.cfg.Port),
+		Addr:              fmt.Sprintf(":%d", s.cfg.Port),
 		Handler:           s.Routes(),
 		ReadTimeout:       s.cfg.ReadTimeout,
 		WriteTimeout:      s.cfg.WriteTimeout,
 		IdleTimeout:       s.cfg.IdleTimeout,
-		//TODO: ADD ReadHeaderTimeout to configs
 		ReadHeaderTimeout: s.cfg.ReadHeaderTimeout,
 		MaxHeaderBytes:    s.cfg.MaxHeaderBytes,
 	}
@@ -77,14 +76,14 @@ func (s *Server) Run() error {
 
 
 	`
-	s.logger.Info(fmt.Sprintf("Api Server started at port: %s", s.cfg.Port))
+	s.logger.Info(fmt.Sprintf("Api Server started at port: %d", s.cfg.Port))
 	s.logger.Info(banner)
 	return nil
 }
 
 func (s *Server) Routes() http.Handler {
 	router := chi.NewRouter()
-
+	config := configs.GetConfig()
 	// TODO: add security middleware (needs to adopt new config logic)
 	// Middleware for metrics, logging, recovery, and timeouts should be here
 	router.Use(
@@ -92,6 +91,9 @@ func (s *Server) Routes() http.Handler {
 		chiMiddleware.RealIP,
 		chiMiddleware.Recoverer,
 		chiMiddleware.Timeout(s.cfg.IdleTimeout),
+		middleware.SecurityMiddleware(
+			&config.Middleware, s.logger,
+		),
 	)
 
 	router.Route("api/v1", func(r chi.Router) {
