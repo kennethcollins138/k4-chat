@@ -27,12 +27,17 @@ database:
     conn_max_idle_time: "30m"
     health_check_period: "1m"
     query_timeout: "30s"
-    migration_path: "migrations/postgres"
+    migration_path: "internal/database/migrations"
     enable_logging: false
   redis:
+    enabled: true
     host: "localhost"
     port: 6379
+    username: ""
+    password: "" 
     database: 0
+    key_prefix: "k4chat:"
+    default_ttl: "1h"
     pool_size: 10
     min_idle_conns: 5
     max_retries: 3
@@ -42,20 +47,10 @@ database:
     pool_timeout: "4s"
     idle_timeout: "5m"
     max_conn_age: "30m"
-
-redis:
-  enabled: true
-  host: "localhost"
-  port: 6379
-  database: 1
-  key_prefix: "k4chat:"
-  default_ttl: "1h"
-  pool_size: 10
-  min_idle_conns: 5
-  max_retries: 3
-  dial_timeout: "5s"
-  read_timeout: "3s"
-  write_timeout: "3s"
+    circuit_breaker:
+      enabled: true
+      failure_threshold: 5
+      reset_timeout: "30s"
 
 auth:
   jwt:

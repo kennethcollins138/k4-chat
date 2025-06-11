@@ -28,12 +28,17 @@ database:
     conn_max_idle_time: "30m"
     health_check_period: "1m"
     query_timeout: "30s"
-    migration_path: "migrations/postgres"
+    migration_path: "internal/database/migrations"
     enable_logging: true
   redis:
+    enabled: true
     host: "localhost"  # Overridden by ENV
     port: 6379
+    username: ""  # Redis 6+ ACL username
+    password: ""  # Overridden by ENV if Redis auth is used
     database: 0
+    key_prefix: ""  # Not used for database operations
+    default_ttl: "0s"  # Not used for database operations
     pool_size: 10
     min_idle_conns: 5
     max_retries: 3
@@ -43,11 +48,17 @@ database:
     pool_timeout: "4s"
     idle_timeout: "5m"
     max_conn_age: "30m"
+    circuit_breaker:
+      enabled: false  # Disabled in dev for easier debugging
+      failure_threshold: 10
+      reset_timeout: "10s"
 
 redis:
   enabled: true
   host: "localhost"  # Overridden by ENV
   port: 6379
+  username: ""  # Redis 6+ ACL username
+  password: ""  # Overridden by ENV if Redis auth is used
   database: 1
   key_prefix: "k4chat:dev:"
   default_ttl: "1h"
@@ -57,6 +68,13 @@ redis:
   dial_timeout: "5s"
   read_timeout: "3s"
   write_timeout: "3s"
+  pool_timeout: "4s"
+  idle_timeout: "5m"
+  max_conn_age: "30m"
+  circuit_breaker:
+    enabled: false  # Disabled in dev for easier debugging
+    failure_threshold: 10
+    reset_timeout: "10s"
 
 auth:
   jwt:

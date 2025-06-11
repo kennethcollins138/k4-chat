@@ -51,7 +51,7 @@ type ServerConfig struct {
 // DatabaseConfig aggregates all database configurations
 type DatabaseConfig struct {
 	Postgres PostgresConfig `yaml:"postgres"`
-	Redis    RedisDBConfig  `yaml:"redis"`
+	Redis    RedisConfig    `yaml:"redis"`
 }
 
 // PostgresConfig defines PostgreSQL connection configuration
@@ -71,36 +71,33 @@ type PostgresConfig struct {
 	EnableLogging     bool          `yaml:"enable_logging"`
 }
 
-// RedisDBConfig defines Redis database configuration (separate from RedisConfig for caching)
-type RedisDBConfig struct {
-	Host         string        `yaml:"host"`
-	Port         int           `yaml:"port"`
-	Database     int           `yaml:"database"`
-	PoolSize     int           `yaml:"pool_size"`
-	MinIdleConns int           `yaml:"min_idle_conns"`
-	MaxRetries   int           `yaml:"max_retries"`
-	DialTimeout  time.Duration `yaml:"dial_timeout"`
-	ReadTimeout  time.Duration `yaml:"read_timeout"`
-	WriteTimeout time.Duration `yaml:"write_timeout"`
-	PoolTimeout  time.Duration `yaml:"pool_timeout"`
-	IdleTimeout  time.Duration `yaml:"idle_timeout"`
-	MaxConnAge   time.Duration `yaml:"max_conn_age"`
+// RedisConfig defines unified Redis configuration (for both caching and database operations)
+type RedisConfig struct {
+	Enabled        bool                 `yaml:"enabled"`
+	Host           string               `yaml:"host"`
+	Port           int                  `yaml:"port"`
+	Username       string               `yaml:"username"` // Redis 6+ ACL username
+	Password       string               `yaml:"password"` // Redis password
+	Database       int                  `yaml:"database"`
+	KeyPrefix      string               `yaml:"key_prefix"`  // Only used for caching Redis
+	DefaultTTL     time.Duration        `yaml:"default_ttl"` // Only used for caching Redis
+	PoolSize       int                  `yaml:"pool_size"`
+	MinIdleConns   int                  `yaml:"min_idle_conns"`
+	MaxRetries     int                  `yaml:"max_retries"`
+	DialTimeout    time.Duration        `yaml:"dial_timeout"`
+	ReadTimeout    time.Duration        `yaml:"read_timeout"`
+	WriteTimeout   time.Duration        `yaml:"write_timeout"`
+	PoolTimeout    time.Duration        `yaml:"pool_timeout"`
+	IdleTimeout    time.Duration        `yaml:"idle_timeout"`
+	MaxConnAge     time.Duration        `yaml:"max_conn_age"`
+	CircuitBreaker CircuitBreakerConfig `yaml:"circuit_breaker"`
 }
 
-// RedisConfig defines Redis caching configuration
-type RedisConfig struct {
-	Enabled      bool          `yaml:"enabled"`
-	Host         string        `yaml:"host"`
-	Port         int           `yaml:"port"`
-	Database     int           `yaml:"database"`
-	KeyPrefix    string        `yaml:"key_prefix"`
-	DefaultTTL   time.Duration `yaml:"default_ttl"`
-	PoolSize     int           `yaml:"pool_size"`
-	MinIdleConns int           `yaml:"min_idle_conns"`
-	MaxRetries   int           `yaml:"max_retries"`
-	DialTimeout  time.Duration `yaml:"dial_timeout"`
-	ReadTimeout  time.Duration `yaml:"read_timeout"`
-	WriteTimeout time.Duration `yaml:"write_timeout"`
+// CircuitBreakerConfig defines CB pattern configuration
+type CircuitBreakerConfig struct {
+	Enabled          bool          `yaml:"enabled"`
+	FailureThreshold int           `yaml:"failure_threshold"`
+	ResetTimeout     time.Duration `yaml:"reset_timeout"`
 }
 
 // AuthConfig defines authentication and authorization configuration
@@ -147,8 +144,8 @@ type PasswordPolicyConfig struct {
 
 // OAuthConfig defines OAuth provider configuration
 type OAuthConfig struct {
-	Enabled   bool                     `yaml:"enabled"`
-	Providers map[string]OAuthProvider `yaml:"providers"`
+	OAuthEnabled bool                     `yaml:"oauth_enabled"`
+	Providers    map[string]OAuthProvider `yaml:"providers"`
 }
 
 // OAuthProvidersConfig defines OAuth providers configuration
@@ -160,13 +157,13 @@ type OAuthProvidersConfig struct {
 
 // OAuthProvider defines individual OAuth provider settings
 type OAuthProvider struct {
-	Enabled     bool     `yaml:"enabled"`
-	ClientID    string   `yaml:"client_id"`
-	RedirectURL string   `yaml:"redirect_url"`
-	Scopes      []string `yaml:"scopes"`
-	AuthURL     string   `yaml:"auth_url"`
-	TokenURL    string   `yaml:"token_url"`
-	UserInfoURL string   `yaml:"user_info_url"`
+	ProviderEnabled bool     `yaml:"provider_enabled"`
+	ClientID        string   `yaml:"client_id"`
+	RedirectURL     string   `yaml:"redirect_url"`
+	Scopes          []string `yaml:"scopes"`
+	AuthURL         string   `yaml:"auth_url"`
+	TokenURL        string   `yaml:"token_url"`
+	UserInfoURL     string   `yaml:"user_info_url"`
 }
 
 // AuthRateLimitConfig defines auth-specific rate limiting
@@ -215,7 +212,7 @@ type FeatureFlagsConfig struct {
 
 // RateLimitingConfig defines global rate limiting configuration
 type RateLimitingConfig struct {
-	Enabled        bool                     `yaml:"enabled"`
+	RLEnabled      bool                     `yaml:"rl_enabled"`
 	Storage        string                   `yaml:"storage"` // memory, redis
 	DefaultLimits  map[string]RateLimitRule `yaml:"default_limits"`
 	PerUserLimits  map[string]RateLimitRule `yaml:"per_user_limits"`

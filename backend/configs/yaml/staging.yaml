@@ -27,12 +27,18 @@ database:
     conn_max_idle_time: "15m"
     health_check_period: "30s"
     query_timeout: "20s"
-    migration_path: "migrations/postgres"
+    migration_path: "internal/database/migrations"
     enable_logging: true  # Keep logging for debugging
   redis:
-    host: "localhost"  # Overridden by REDIS_HOST
+    enabled: true
+    host: "localhost"
     port: 6379
+    username: "" 
+    password: ""
     database: 2  # separate staging database
+    key_prefix: ""  # Not used for database operations
+    key_prefix: "k4chat:staging:"
+    default_ttl: "1h"
     pool_size: 30
     min_idle_conns: 8
     max_retries: 3
@@ -42,20 +48,10 @@ database:
     pool_timeout: "4s"
     idle_timeout: "10m"
     max_conn_age: "1h"
-
-redis:
-  enabled: true
-  host: "localhost"  # Overridden by REDIS_HOST
-  port: 6379
-  database: 3
-  key_prefix: "k4chat:staging:"
-  default_ttl: "1h"
-  pool_size: 30
-  min_idle_conns: 8
-  max_retries: 3
-  dial_timeout: "5s"
-  read_timeout: "3s"
-  write_timeout: "3s"
+    circuit_breaker:
+      enabled: true
+      failure_threshold: 8
+      reset_timeout: "20s"
 
 auth:
   jwt:

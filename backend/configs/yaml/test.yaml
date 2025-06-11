@@ -27,12 +27,17 @@ database:
     conn_max_idle_time: "1m"
     health_check_period: "30s"
     query_timeout: "5s"  # Fast fail for tests
-    migration_path: "migrations/postgres"
+    migration_path: "internal/database/migrations"
     enable_logging: false  # Quiet during tests
   redis:
+    enabled: true
     host: "localhost"
     port: 6379
+    username: ""  # No auth in tests
+    password: ""  # No auth in tests
     database: 15  # Use a high database number for tests
+    key_prefix: ""  # Not used for database operations
+    default_ttl: "0s"  # Not used for database operations
     pool_size: 3  # Minimal for testing
     min_idle_conns: 1
     max_retries: 1  # Fail fast in tests
@@ -42,11 +47,17 @@ database:
     pool_timeout: "1s"
     idle_timeout: "1m"
     max_conn_age: "5m"
+    circuit_breaker:
+      enabled: false  # Disabled in tests for predictable behavior
+      failure_threshold: 1
+      reset_timeout: "1s"
 
 redis:
   enabled: true
   host: "localhost"
   port: 6379
+  username: ""  # No auth in tests
+  password: ""  # No auth in tests
   database: 14  # Different from postgres redis db
   key_prefix: "k4chat:test:"
   default_ttl: "1m"  # Short TTL for tests
@@ -56,6 +67,13 @@ redis:
   dial_timeout: "1s"
   read_timeout: "1s"
   write_timeout: "1s"
+  pool_timeout: "1s"
+  idle_timeout: "1m"
+  max_conn_age: "5m"
+  circuit_breaker:
+    enabled: false  # Disabled in tests for predictable behavior
+    failure_threshold: 1
+    reset_timeout: "1s"
 
 auth:
   jwt:

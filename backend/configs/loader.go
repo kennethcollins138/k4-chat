@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 
 	"gopkg.in/yaml.v3"
@@ -137,8 +138,19 @@ func applyEnvironmentOverrides(config *Config) error {
 
 	// Redis overrides
 	if Envs.Redis.Host != "" {
-		config.Redis.Host = Envs.Redis.Host
 		config.Database.Redis.Host = Envs.Redis.Host
+	}
+
+	if Envs.Redis.Password != "" {
+		config.Database.Redis.Password = Envs.Redis.Password
+	}
+
+	if Envs.Redis.Port != "" {
+		redisPort, err := strconv.Atoi(Envs.Redis.Port)
+		if err != nil {
+			return fmt.Errorf("invalid redis port: %w", err)
+		}
+		config.Database.Redis.Port = redisPort
 	}
 
 	// Auth overrides
@@ -167,8 +179,18 @@ func validateConfig(config *Config) error {
 	}
 
 	// Validate Redis configuration if enabled
-	if config.Redis.Enabled && config.Redis.Host == "" {
+	if config.Database.Redis.Enabled && config.Database.Redis.Host == "" {
 		return fmt.Errorf("redis host is required when redis is enabled")
+	}
+
+	// Validate Database Redis circuit breaker configuration
+	if config.Database.Redis.CircuitBreaker.Enabled {
+		if config.Database.Redis.CircuitBreaker.FailureThreshold <= 0 {
+			return fmt.Errorf("database redis circuit breaker failure threshold must be positive")
+		}
+		if config.Database.Redis.CircuitBreaker.ResetTimeout <= 0 {
+			return fmt.Errorf("database redis circuit breaker reset timeout must be positive")
+		}
 	}
 
 	// Validate auth configuration
@@ -184,7 +206,12 @@ func validateConfig(config *Config) error {
 		return fmt.Errorf("max active users must be positive")
 	}
 
-	// TODO: Validate feature flags when implemented
+	// Validate middleware configuration
+	if config.Middleware.CORS.Enabled {
+		if len(config.Middleware.CORS.AllowedOrigins) == 0 {
+			return fmt.Errorf("CORS allowed origins cannot be empty when CORS is enabled")
+		}
+	}
 
 	return nil
 }
@@ -263,4 +290,40 @@ func IsFeatureEnabled(feature string) bool {
 	default:
 		return false
 	}
+}
+
+// GetRedisConfig returns the Redis configuration with circuit breaker
+func GetRedisConfig() RedisConfig {
+	config := GetConfig()
+	if config == nil {
+		return RedisConfig{}
+	}
+	return config.Database.Redis
+}
+
+// GetMiddlewareConfig returns just the middleware configuration
+func GetMiddlewareConfig() MiddlewareConfig {
+	config := GetConfig()
+	if config == nil {
+		return MiddlewareConfig{}
+	}
+	return config.Middleware
+}
+
+// GetCircuitBreakerConfig returns circuit breaker config for Redis
+func GetRedisCircuitBreakerConfig() CircuitBreakerConfig {
+	config := GetConfig()
+	if config == nil {
+		return CircuitBreakerConfig{}
+	}
+	return config.Database.Redis.CircuitBreaker
+}
+
+// GetRedisDBCircuitBreakerConfig returns circuit breaker config for Redis DB
+func GetRedisDBCircuitBreakerConfig() CircuitBreakerConfig {
+	config := GetConfig()
+	if config == nil {
+		return CircuitBreakerConfig{}
+	}
+	return config.Database.Redis.CircuitBreaker
 }
