@@ -1,0 +1,246 @@
+# Test Configuration for k4-chat
+# unit tests, integration tests, CI/CD
+
+server:
+  host: "localhost"
+  port: 0  # Random port for parallel testing
+  read_timeout: "5s"  # Faster timeouts for tests
+  write_timeout: "5s"
+  idle_timeout: "10s"
+  shutdown_timeout: "5s"
+  max_header_bytes: 1048576
+  enable_profiling: false
+  trusted_proxies: ["127.0.0.1", "::1"]
+  health_check_path: "/health"
+  metrics_path: "/metrics"
+
+database:
+  postgres:
+    host: "localhost"
+    port: 5432
+    database: "k4chat_test"  # Separate test database
+    username: "postgres"
+    ssl_mode: "disable"
+    max_open_conns: 5  # Lower for testing
+    max_idle_conns: 2
+    conn_max_lifetime: "5m"  # Shorter for tests
+    conn_max_idle_time: "1m"
+    health_check_period: "30s"
+    query_timeout: "5s"  # Fast fail for tests
+    migration_path: "migrations/postgres"
+    enable_logging: false  # Quiet during tests
+  redis:
+    host: "localhost"
+    port: 6379
+    database: 15  # Use a high database number for tests
+    pool_size: 3  # Minimal for testing
+    min_idle_conns: 1
+    max_retries: 1  # Fail fast in tests
+    dial_timeout: "1s"
+    read_timeout: "1s"
+    write_timeout: "1s"
+    pool_timeout: "1s"
+    idle_timeout: "1m"
+    max_conn_age: "5m"
+
+redis:
+  enabled: true
+  host: "localhost"
+  port: 6379
+  database: 14  # Different from postgres redis db
+  key_prefix: "k4chat:test:"
+  default_ttl: "1m"  # Short TTL for tests
+  pool_size: 3
+  min_idle_conns: 1
+  max_retries: 1
+  dial_timeout: "1s"
+  read_timeout: "1s"
+  write_timeout: "1s"
+
+auth:
+  jwt:
+    access_token_ttl: "5m"  # Shorter for faster test cycles
+    refresh_token_ttl: "1h"
+    issuer: "k4-chat-test"
+    audience: "k4-chat-test-users"
+    algorithm: "HS256"
+  sessions:
+    max_sessions_per_user: 5
+    session_timeout: "1h"
+    refresh_threshold: "10m"
+    cleanup_interval: "1m"  # Frequent cleanup in tests
+    secure_cookies: false
+    same_site_policy: "Lax"
+    device_binding: false  # Simpler for testing
+    fingerprint_validation: false
+  password_policy:
+    min_length: 4  # Relaxed for test fixtures
+    require_uppercase: false
+    require_lowercase: false
+    require_numbers: false
+    require_symbols: false
+    max_attempts: 100  # No lockouts in tests
+    lockout_duration: "1s"
+  rate_limiting:
+    login_attempts:
+      requests: 1000  # No limits in tests
+      window: "1m"
+      burst: 100
+    token_refresh:
+      requests: 1000
+      window: "1m"
+      burst: 100
+    password_reset:
+      requests: 1000
+      window: "1h"
+      burst: 100
+    account_creation:
+      requests: 1000
+      window: "1h"
+      burst: 100
+  security:
+    require_two_factor: false
+    allowed_origins: ["http://localhost:3000", "http://127.0.0.1:3000"]
+    block_suspicious_logins: false
+    session_rotation_interval: "1h"
+
+logger:
+  level: "error"  # Quiet during tests (only errors)
+  format: "console"
+  output: "stdout"
+  file_path: ""
+  max_size_mb: 10
+  max_backups: 1
+  max_age_days: 1
+  compress: false
+  enable_sampling: false
+  sampling_initial: 100
+  sampling_thereafter: 100
+
+feature_flags:
+  enable_websocket: false  # Disable complex features in basic tests
+  enable_file_uploads: false
+  enable_image_generation: false
+  enable_web_search: false
+  enable_user_profiles: true
+  enable_chat_sharing: false
+  enable_analytics: false
+  enable_metrics: false  # No metrics in tests
+  enable_debug_mode: false
+
+rate_limiting:
+  enabled: false  # Disable rate limiting in tests
+  storage: "memory"
+  key_generator: "ip"
+  whitelisted_ips: ["127.0.0.1", "::1"]
+  default_limits:
+    api:
+      requests: 10000
+      window: "1m"
+      burst: 1000
+    websocket:
+      requests: 10000
+      window: "1m"
+      burst: 1000
+  per_user_limits:
+    free:
+      requests: 10000
+      window: "1m"
+      burst: 1000
+
+middleware:
+  security:
+    enable_hsts: false
+    hsts_max_age: 0
+    enable_frame_options: false  # Minimal security for tests
+    frame_options_value: "SAMEORIGIN"
+    enable_content_type_no_sniff: false
+    csp_policy: ""  # No CSP in tests
+    allowed_hosts: []
+  cors:
+    enabled: true
+    allowed_origins: ["*"]  # Permissive for tests
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+    allowed_headers: ["*"]
+    exposed_headers: ["*"]
+    allow_credentials: true
+    max_age: 86400
+  compression:
+    enabled: false  # Disable compression in tests
+    level: 0
+    min_length: 1024
+    types: []
+  timeout:
+    read: "5s"
+    write: "5s"
+    request: "5s"
+
+actors:
+  supervisor:
+    max_restarts: 1  # Fail fast for testing
+    restart_window: "10s"
+    shutdown_timeout: "5s"
+    health_check_interval: "10s"
+  user_manager:
+    max_active_users: 10  # Small limits for tests
+    idle_timeout: "1m"  # Quick cleanup
+    shutdown_timeout: "5s"
+    health_check_interval: "10s"
+    cleanup_interval: "10s"
+    max_connections_per_user: 3
+  connection:
+    ping_interval: "10s"
+    ping_timeout: "5s"
+    write_timeout: "5s"
+    read_timeout: "10s"
+    max_message_size: 1024  # Smaller for tests
+    buffer_size: 256
+    compression_level: 0
+  chat_session:
+    max_sessions_per_user: 5
+    idle_timeout: "5m"
+    message_batch_size: 10
+    history_limit: 100
+    auto_save_interval: "10s"
+  llm_manager:
+    default_model: "mock-model"  # Use mock in tests
+    timeout: "5s"
+    max_concurrent_requests: 2
+    retry_attempts: 1  # No retries in tests
+    retry_delay: "100ms"
+    providers:
+      openai:
+        enabled: false  # Mock providers in tests
+        base_url: "http://localhost:8080/mock-openai"
+        model: "mock-gpt"
+        max_tokens: 100
+        temperature: 0.0  # Deterministic for tests
+        top_p: 1.0
+        timeout: "5s"
+      anthropic:
+        enabled: false
+        base_url: "http://localhost:8080/mock-anthropic"
+        model: "mock-claude"
+        max_tokens: 100
+        temperature: 0.0
+        timeout: "5s"
+  tools_manager:
+    enabled: false  # Disable tools in tests
+    timeout: "5s"
+    max_concurrent: 1
+    tools:
+      web_search:
+        enabled: false
+        timeout: "5s"
+        max_requests_per_hour: 1000
+        config:
+          engine: "mock"
+          max_results: 3
+      image_generation:
+        enabled: false
+        timeout: "5s"
+        max_requests_per_hour: 1000
+        config:
+          provider: "mock"
+          model: "mock-dalle"
+          size: "256x256" 
