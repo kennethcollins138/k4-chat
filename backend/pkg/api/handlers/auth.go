@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+
 	"github.com/kdot/k4-chat/backend/internal/auth"
 	"github.com/kdot/k4-chat/backend/internal/database/models"
 
@@ -154,7 +155,7 @@ func (h *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		WriteErrorResponse(w, status, "Signup failed", nil)
 		return
 	}
-
+	
 	// Success - convert to DTO and return
 	userDTO := h.convertUserToDTO(user)
 

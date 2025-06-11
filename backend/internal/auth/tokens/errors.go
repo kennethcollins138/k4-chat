@@ -12,20 +12,3 @@ var (
 	ErrTokenVersionMismatch = errors.New("token version mismatch")
 	ErrTokenReuse           = errors.New("token reuse detected")
 )
-
-// Token-related constants
-const (
-	// Token types
-	TokenTypeAccess  = "access"
-	TokenTypeRefresh = "refresh"
-
-	// Redis key prefixes
-	RedisKeyRefreshToken = "refresh_token:"
-	RedisKeyBlacklist    = "blacklist:"
-	RedisKeyUserTokens   = "user_refresh_tokens:"
-
-	// Default TTLs (in seconds)
-	DefaultAccessTokenTTL  = 900    // 15 minutes
-	DefaultRefreshTokenTTL = 604800 // 7 days
-	DefaultBlacklistTTL    = 86400  // 24 hours
-)

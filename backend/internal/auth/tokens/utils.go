@@ -14,3 +14,19 @@ func GenerateRefreshTokenID() (string, error) {
 	}
 	return base64.URLEncoding.EncodeToString(b), nil
 }
+
+const (
+	// Token types
+	TokenTypeAccess  = "access"
+	TokenTypeRefresh = "refresh"
+
+	// Redis key prefixes
+	RedisKeyRefreshToken = "refresh_token:"
+	RedisKeyBlacklist    = "blacklist:"
+	RedisKeyUserTokens   = "user_refresh_tokens:"
+
+	// Default TTLs (in seconds)
+	DefaultAccessTokenTTL  = 900    // 15 minutes
+	DefaultRefreshTokenTTL = 604800 // 7 days
+	DefaultBlacklistTTL    = 86400  // 24 hours
+)
