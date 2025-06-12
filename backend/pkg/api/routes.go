@@ -5,6 +5,7 @@ import (
 
 	"github.com/kdot/k4-chat/backend/configs"
 	"github.com/kdot/k4-chat/backend/internal/auth"
+	"github.com/kdot/k4-chat/backend/internal/auth/coordinator"
 	"github.com/kdot/k4-chat/backend/internal/auth/sessions"
 	"github.com/kdot/k4-chat/backend/internal/auth/tokens"
 	"github.com/kdot/k4-chat/backend/pkg/api/handlers"
@@ -24,12 +25,19 @@ func (s *Server) RegisterRoutes(router chi.Router) {
 		EnableRotation:     cfg.Auth.Sessions.EnableRotation,
 	}
 
-	// Initialize token/sessage management
+	// Initialize token/session management
 	tokenStore := tokens.NewRedisTokenStore(
 		s.redis, s.logger, tokenConfig,
 	)
 
 	sessionManager := sessions.NewRedisSessionStore(s.redis, s.logger, tokenConfig.RefreshTokenTTL)
+	sessionTokenCoordinator := coordinator.NewSessionTokenCoordinator(
+		sessionManager,
+		tokenStore,
+		s.redis,
+		nil, // UserService not implemented yet
+		s.logger,
+	)
 
 	// Initialize Auth middleware
 	authMiddleware := middleware.NewAuthMiddleware(sessionManager, nil, tokenStore, s.pg, s.redis, s.logger)
@@ -42,7 +50,16 @@ func (s *Server) RegisterRoutes(router chi.Router) {
 	// Initialize auth service and handler
 	authRepo := auth.NewRepository(s.pg, s.logger)
 	authService := auth.NewService(authRepo, s.logger)
-	authHandler := handlers.NewAuthHandler(authService, s.logger)
+
+	// Initialize professional auth handler with coordinator and configuration
+	authHandler := handlers.NewAuthHandler(
+		authService,
+		sessionTokenCoordinator,
+		&cfg.Handlers,
+		s.logger,
+		s.redis,
+	)
+
 	// Initialize user service and handler
 
 	// Initialize chat service and handler
