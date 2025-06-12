@@ -195,6 +195,27 @@ middleware:
     write: "5s"
     request: "5s"
 
+handlers:
+  auth:
+    session_create_timeout: "5s"
+    token_refresh_timeout: "2s"
+    logout_timeout: "2s"
+    enable_detailed_errors: true 
+    enable_audit_logging: false 
+    max_login_attempts: 1000  # No lockouts in tests
+    lockout_duration: "1s"
+  request:
+    max_request_body_size: 524288
+    request_timeout: "5s"
+    enable_metrics: false
+    enable_tracing: false 
+  audit:
+    enabled: false
+    log_successful: false
+    log_failures: false
+    include_details: false
+    sensitive_fields: []
+
 actors:
   supervisor:
     max_restarts: 1  # Fail fast for testing

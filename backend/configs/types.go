@@ -24,6 +24,7 @@ type Config struct {
 	OAuth        OAuthConfig        `yaml:"oauth"`
 	RateLimiting RateLimitingConfig `yaml:"rate_limiting"`
 	Middleware   MiddlewareConfig   `yaml:"middleware"`
+	Handlers     HandlersConfig     `yaml:"handlers"`
 
 	// Actor system configs
 	Actors ActorsConfig `yaml:"actors"`
@@ -79,8 +80,8 @@ type RedisConfig struct {
 	Username       string               `yaml:"username"` // Redis 6+ ACL username
 	Password       string               `yaml:"password"` // Redis password
 	Database       int                  `yaml:"database"`
-	KeyPrefix      string               `yaml:"key_prefix"`  // Only used for caching Redis
-	DefaultTTL     time.Duration        `yaml:"default_ttl"` // Only used for caching Redis
+	KeyPrefix      string               `yaml:"key_prefix"`
+	DefaultTTL     time.Duration        `yaml:"default_ttl"`
 	PoolSize       int                  `yaml:"pool_size"`
 	MinIdleConns   int                  `yaml:"min_idle_conns"`
 	MaxRetries     int                  `yaml:"max_retries"`
@@ -356,4 +357,39 @@ type ToolConfig struct {
 	Timeout     time.Duration          `yaml:"timeout"`
 	MaxRequests int                    `yaml:"max_requests_per_hour"`
 	Config      map[string]interface{} `yaml:"config"`
+}
+
+// HandlersConfig defines handler-specific configuration
+type HandlersConfig struct {
+	Auth    AuthHandlerConfig    `yaml:"auth"`
+	Request RequestHandlerConfig `yaml:"request"`
+	Audit   AuditConfig          `yaml:"audit"`
+}
+
+// AuthHandlerConfig defines auth handler specific settings
+type AuthHandlerConfig struct {
+	SessionCreateTimeout time.Duration `yaml:"session_create_timeout"`
+	TokenRefreshTimeout  time.Duration `yaml:"token_refresh_timeout"`
+	LogoutTimeout        time.Duration `yaml:"logout_timeout"`
+	EnableDetailedErrors bool          `yaml:"enable_detailed_errors"`
+	EnableAuditLogging   bool          `yaml:"enable_audit_logging"`
+	MaxLoginAttempts     int           `yaml:"max_login_attempts"`
+	LockoutDuration      time.Duration `yaml:"lockout_duration"`
+}
+
+// RequestHandlerConfig defines general request handling settings
+type RequestHandlerConfig struct {
+	MaxRequestBodySize int           `yaml:"max_request_body_size"`
+	RequestTimeout     time.Duration `yaml:"request_timeout"`
+	EnableMetrics      bool          `yaml:"enable_metrics"`
+	EnableTracing      bool          `yaml:"enable_tracing"`
+}
+
+// AuditConfig defines audit logging configuration
+type AuditConfig struct {
+	Enabled         bool     `yaml:"enabled"`
+	LogSuccessful   bool     `yaml:"log_successful"`
+	LogFailures     bool     `yaml:"log_failures"`
+	IncludeDetails  bool     `yaml:"include_details"`
+	SensitiveFields []string `yaml:"sensitive_fields"`
 }

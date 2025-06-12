@@ -206,6 +206,27 @@ middleware:
     write: "30s"
     request: "30s"
 
+handlers:
+  auth:
+    session_create_timeout: "10s"
+    token_refresh_timeout: "5s"
+    logout_timeout: "5s"
+    enable_detailed_errors: false
+    enable_audit_logging: true
+    max_login_attempts: 3
+    lockout_duration: "30m"
+  request:
+    max_request_body_size: 1048576
+    request_timeout: "30s"
+    enable_metrics: true
+    enable_tracing: false
+  audit:
+    enabled: true
+    log_successful: false
+    log_failures: true
+    include_details: false
+    sensitive_fields: ["password", "token", "secret", "key", "session_id", "user_id"]
+
 actors:
   supervisor:
     max_restarts: 3  # FIX: need to test 

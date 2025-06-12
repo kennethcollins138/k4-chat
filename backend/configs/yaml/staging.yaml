@@ -181,6 +181,27 @@ middleware:
     write: "30s"
     request: "30s"
 
+handlers:
+  auth:
+    session_create_timeout: "12s"
+    token_refresh_timeout: "7s"
+    logout_timeout: "7s"
+    enable_detailed_errors: true
+    enable_audit_logging: true
+    max_login_attempts: 8 
+    lockout_duration: "15m"
+  request:
+    max_request_body_size: 1572864
+    request_timeout: "35s"
+    enable_metrics: true
+    enable_tracing: true
+  audit:
+    enabled: true
+    log_successful: true
+    log_failures: true
+    include_details: true
+    sensitive_fields: ["password", "token", "secret", "key"]
+
 actors:
   supervisor:
     max_restarts: 5
